@@ -1,4 +1,4 @@
-# TemporalBench — Kaggle AGI Submission Plan
+﻿# TemporalBench — Kaggle AGI Submission Plan
 
 **Competition:** [Measuring Progress Toward AGI - Cognitive Abilities](https://www.kaggle.com/competitions/kaggle-measuring-agi)  
 **Track:** Reasoning (temporal reasoning sub-category)  
@@ -177,10 +177,10 @@ From your data: v4 has no change events but tests reversion patterns. System C/D
 
 ### 4.1 Benchmark Submission
 
-1. Create `benchmark.json` listing all tasks
-2. Zip `benchmark/` directory
-3. Upload to Kaggle: `kaggle.com/benchmarks/temporalbench-v1`
-4. Set all tasks **private** (auto-publish after April 16)
+- [x] 1. Create `benchmark.json` listing all tasks  → `benchmark/tasks.json` (already existed)
+- [x] 2. Zip `benchmark/` directory  → `benchmark.zip` created (35.8 KB)
+- [ ] 3. Upload to Kaggle: `kaggle.com/benchmarks/temporalbench-v1`
+- [ ] 4. Set all tasks **private** (auto-publish after April 16)
 
 ### 4.2 Writeup Finalization
 
