@@ -136,3 +136,5 @@ class TemporalBench:
 if __name__ == "__main__":
     print("TemporalBench v1.0")
     print("Run with: python run_benchmark.py --all")
+
+# TODO (rotator): 3. Upload to Kaggle: `kaggle.com/benchmarks/temporalbench-v1`
