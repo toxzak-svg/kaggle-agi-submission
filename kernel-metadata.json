@@ -1,12 +1,13 @@
 {
   "id": "zacharymaronek/tempporalkernel",
   "title": "TempporalKernel",
-  "code_file": "notebook.ipynb",
+  "code_file": "kaggle_notebooks\\temporalbench_v4.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": true,
   "enable_gpu": false,
   "enable_internet": false,
   "dataset_sources": [],
-  "competition_sources": []
+  "competition_sources": [],
+  "enable_tpu": false
 }

@@ -1,6 +1,6 @@
 project: tempporalkernel
 kernel_slug: zacharymaronek/tempporalkernel
-code_file: notebook.ipynb
+code_file: kaggle_notebooks\temporalbench_v4.ipynb
 accelerator: none
 internet: false
 privacy: private

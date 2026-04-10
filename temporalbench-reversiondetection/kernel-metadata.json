@@ -1,0 +1,25 @@
+{
+  "id": "zacharymaronek/temporalbench-reversiondetection",
+  "id_no": 115241011,
+  "title": "TemporalBench \u2014 ReversionDetection",
+  "code_file": "temporalbench-reversiondetection.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": false,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "keywords": [
+    "personal benchmark"
+  ],
+  "dataset_sources": [
+    "zacharymaronek/temporalbench",
+    "zacharymaronek/temporalbenchmark",
+    "zacharymaronek/timebench-dataset"
+  ],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": [],
+  "docker_image": "gcr.io/kaggle-images/python@sha256:c370a5ff133d162d17c2dca332b50f3e85c0b0ed1471ee18e98e3009eee80b08",
+  "machine_shape": "None"
+}
