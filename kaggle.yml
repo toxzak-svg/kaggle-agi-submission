@@ -1,0 +1,10 @@
+project: tempporalkernel
+kernel_slug: zacharymaronek/tempporalkernel
+code_file: notebook.ipynb
+accelerator: none
+internet: false
+privacy: private
+datasets: []
+competitions: []
+outputs:
+  download_to: .kaggle-outputs/
