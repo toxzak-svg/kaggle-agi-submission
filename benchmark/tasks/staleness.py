@@ -1,96 +1,58 @@
 """
-TemporalBench — Kaggle Benchmark Tasks
+TemporalBench — StalenessDetection Task
 https://www.kaggle.com/competitions/kaggle-measuring-agi
 
-Task: Staleness Detection
-" Is this fact stale or current? Has it been superseded?"
-Derived from AsOfQA — answer differs from latest fact = staleness error.
+Task: Is this fact stale or current? Has it been superseded?
+Derived from AsOfQA — if the latest fact for domain:subject is after as_of_day, it's stale.
 """
 
-import json
-import os
-from typing import Any
-from . import data_utils
+import kbench
+import kbench.assertions
 
-TASK_FAMILY = "StalenessDetection"
-DATA_VERSION = "v1"
+from .store import build_store, load_questions
 
 
-def load_data(version: str = DATA_VERSION, seed: int = 0):
-    bench_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    data_dir = os.path.join(bench_root, "..", "time", "benchmarks")
-    q_path, f_path, _ = data_utils.get_data_paths(version, seed, data_dir)
-    questions = [json.loads(l) for l in open(q_path, encoding="utf-8")]
-    facts = [json.loads(l) for l in open(f_path, encoding="utf-8")]
-    return questions, facts
+@kbench.task(name="StalenessDetection", description="Is this fact stale or current?")
+def staleness_task(llm, version: str = "v1", seed: int = 0) -> None:
+    """StalenessDetection: Binary classification — is the queried fact stale?"""
+    store = build_store(version=version, seed=seed)
+    questions = load_questions(version=version, seed=seed)
 
+    # Filter to AsOfQA/PastQueryTrap (staleness derived from these)
+    asof_questions = [
+        q
+        for q in questions
+        if q.get("task_family") in ("AsOfQA", "PastQueryTrap")
+    ]
 
-def build_harness(version: str = DATA_VERSION, seed: int = 0):
-    questions, facts = load_data(version, seed)
-    timeline: dict[tuple, list[tuple]] = {}
-    for f in facts:
-        domain, subject, day, value = data_utils.parse_content_flexible(f["content"])
-        key = (domain, subject)
-        if key not in timeline:
-            timeline[key] = []
-        timeline[key].append((day, value))
-    for key in timeline:
-        timeline[key].sort(key=lambda x: x[0])
-    return {"questions": questions, "facts": facts, "timeline": timeline}
+    for q in asof_questions:
+        domain = q.get("domain", "")
+        subject = q.get("subject", "")
+        as_of_day = q.get("as_of_day", 50)
 
-
-def is_stale(domain: str, subject: str, as_of_day: int, timeline: dict) -> bool:
-    key = (domain, subject)
-    if key not in timeline:
-        return False
-    latest_day = max(day for day, _ in timeline[key])
-    return latest_day > as_of_day
-
-
-def run(llm, version: str = DATA_VERSION, seed: int = 0):
-    harness = build_harness(version, seed)
-    questions = harness["questions"]
-
-    correct = 0
-    total = 0
-    rows = []
-
-    for q in questions:
-        if q.get("task_family") != "AsOfQA":
+        if not domain or not subject:
             continue
 
-        prompt = f"Is this fact stale or current? {q['prompt']}"
+        # Stale = latest fact for this domain:subject is AFTER as_of_day
+        key = (domain, subject)
+        latest_day = None
+        if key in store.timeline:
+            latest_day = max(day for day, _ in store.timeline[key])
+
+        stale = latest_day is not None and latest_day > as_of_day
+
+        # LLM evaluation: ask directly
+        prompt = f"Is this fact stale or current? {q.get('prompt', '')}"
         response = llm.prompt(prompt).strip()
-        q["response"] = response
 
-        domain = q["domain"]
-        subject = q["subject"]
-        as_of_day = q.get("as_of_day", 50)
-        stale = is_stale(domain, subject, as_of_day, harness["timeline"])
+        resp_lower = response.lower()
+        # LLM says "stale" if it thinks it's old/superseded
+        llm_says_stale = "stale" in resp_lower or "outdated" in resp_lower or "old" in resp_lower
+        correct = llm_says_stale == stale
 
-        response_lc = response.lower()
-        correct_guess = ("stale" in response_lc and stale) or ("current" in response_lc and not stale)
-
-        rows.append({
-            "correct": correct_guess,
-            "stale": stale,
-            "question_id": q["question_id"],
-            "task_family": TASK_FAMILY,
-            "prompt": prompt,
-            "response": response,
-        })
-
-        if correct_guess:
-            correct += 1
-        total += 1
-
-    staleness_error_rate = 1.0 - (correct / total) if total > 0 else 1.0
-    return {
-        "task_family": TASK_FAMILY,
-        "version": version,
-        "seed": seed,
-        "staleness_error_rate": staleness_error_rate,
-        "correct": correct,
-        "total": total,
-        "rows": rows,
-    }
+        kbench.assertions.assert_true(
+            correct,
+            f"[Staleness] domain={domain} subject={subject} "
+            f"as_of_day={as_of_day} latest_day={latest_day} stale={stale} | "
+            f"LLM: {response}",
+        )

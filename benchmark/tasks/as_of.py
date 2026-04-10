@@ -1,95 +1,77 @@
 """
-TemporalBench — Kaggle Benchmark Tasks
-AsOfQA + PastQueryTrap scoring (version-agnostic).
-Handles 'As of day X, what was true about Y?'
+TemporalBench — AsOfQA Task
+https://www.kaggle.com/competitions/kaggle-measuring-agi
+
+Task: As of day X, what was true about subject Y?
+Filters for AsOfQA (v1) and PastQueryTrap (v2/v3/v4) question types.
 """
 
-import json
-import os
-from typing import Any
-from . import data_utils
-from . import task_routing
+import kbench
+import kbench.assertions
 
-TASK_FAMILY = "AsOfQA"
-DATA_VERSION = "v1"
+from .store import build_store, load_questions
 
 
-def load_data(version: str = DATA_VERSION, seed: int = 0):
-    bench_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    data_dir = os.path.join(bench_root, "..", "time", "benchmarks")
-    q_path, f_path, _ = data_utils.get_data_paths(version, seed, data_dir)
-    questions = [json.loads(l) for l in open(q_path, encoding="utf-8")]
-    facts = [json.loads(l) for l in open(f_path, encoding="utf-8")]
-    return questions, facts
+@kbench.task(name="AsOfQA", description="As of day X, what was true about subject Y?")
+def asofqa_task(llm, version: str = "v1", seed: int = 0) -> None:
+    """AsOfQA: Query facts at a specific point in time using validity windows."""
+    # Build temporal store from facts/events
+    store = build_store(version=version, seed=seed)
+    questions = load_questions(version=version, seed=seed)
 
+    # Filter to As-of questions
+    asof_questions = [
+        q
+        for q in questions
+        if q.get("task_family") in ("AsOfQA", "PastQueryTrap")
+    ]
 
-def build_harness(version: str = DATA_VERSION, seed: int = 0):
-    questions, facts = load_data(version, seed)
-    index: dict[tuple, str] = {}
-    for f in facts:
-        domain, subject, day, _ = data_utils.parse_content_flexible(f["content"])
-        key = (domain, subject, day)
-        index[key] = f["content"]
-    return {"questions": questions, "facts": facts, "index": index}
+    for q in asof_questions:
+        as_of_day = q.get("as_of_day", 50)
+        domain = q.get("domain", "")
+        subject = q.get("subject", "")
 
-
-def score_question(question: dict, index: dict) -> dict[str, Any]:
-    domain = question["domain"]
-    subject = question["subject"]
-    as_of_day = question.get("as_of_day", 50)
-
-    best_key = None
-    best_day = -1
-    for (d, s, day), ans in index.items():
-        if d == domain and s == subject and day <= as_of_day:
-            if day > best_day:
-                best_day = day
-                best_key = (d, s, day)
-
-    expected = index.get(best_key, "UNKNOWN") if best_key else "UNKNOWN"
-    correct = question.get("answer", "").strip() == expected
-
-    return {
-        "correct": correct,
-        "answer": expected,
-        "expected": question.get("answer", "").strip(),
-        "question_id": question["question_id"],
-        "task_family": question.get("task_family", "AsOfQA"),
-        "as_of_day": as_of_day,
-    }
-
-
-def run(llm, version: str = DATA_VERSION, seed: int = 0):
-    harness = build_harness(version, seed)
-    questions = harness["questions"]
-
-    correct = 0
-    total = 0
-    rows = []
-
-    for q in questions:
-        # Match AsOfQA (v1) and PastQueryTrap (v2/v3)
-        if not task_routing.is_as_of_question(q):
+        if not domain or not subject:
             continue
 
-        prompt = q["prompt"].strip()
+        # Query the store: what was true at as_of_day?
+        predicted = store.get(domain, subject, as_of_day)
+        expected = q.get("answer", "").strip()
+
+        # LLM evaluates the question
+        prompt = q.get("prompt", "").strip()
         response = llm.prompt(prompt).strip()
-        result = score_question(q, harness["index"])
-        result["prompt"] = prompt
-        result["response"] = response
-        rows.append(result)
 
-        if result["correct"]:
-            correct += 1
-        total += 1
+        # Assert: LLM response should be consistent with the correct answer
+        # Use partial match since LLM may paraphrase
+        kbench.assertions.assert_true(
+            _answer_matches(expected, predicted, response),
+            f"[AsOfQA] Day {as_of_day} | domain={domain} subject={subject} | "
+            f"Expected: {expected} | Store: {predicted} | LLM: {response}",
+        )
 
-    accuracy = correct / total if total > 0 else 0.0
-    return {
-        "task_family": TASK_FAMILY,
-        "version": version,
-        "seed": seed,
-        "accuracy": accuracy,
-        "correct": correct,
-        "total": total,
-        "rows": rows,
-    }
+
+def _answer_matches(expected: str, predicted: str, response: str) -> bool:
+    """
+    Check if the answer is correct.
+    Match modes (any order):
+      1. expected content appears in LLM response
+      2. LLM response is a substring of expected (shorter LLM answers)
+      3. LLM response matches the stored value (predicted)
+    """
+    exp = expected.lower().strip()
+    pred = (predicted or "").lower().strip()
+    resp = response.lower().strip()
+
+    if not exp:
+        return False
+
+    # Content match: answer in response (most flexible)
+    if exp in resp or resp in exp:
+        return True
+
+    # Store-based match: predicted value in response
+    if pred and (pred in resp or resp in pred):
+        return True
+
+    return False

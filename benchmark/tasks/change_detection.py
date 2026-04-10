@@ -1,114 +1,52 @@
 """
-TemporalBench — Kaggle Benchmark Tasks
+TemporalBench — ChangeDetection Task
 https://www.kaggle.com/competitions/kaggle-measuring-agi
 
-Task: Change Detection
-" Did anything change in domain Z between day X and Y?"
+Task: Did anything change for domain:subject between day X and day Y?
+Filters for ChangeDetection task_family.
 """
 
-import json
-import os
-from typing import Any
-from . import data_utils
+import kbench
+import kbench.assertions
 
-TASK_FAMILY = "ChangeDetection"
-DATA_VERSION = "v1"
+from .store import build_store, load_questions
 
 
-def load_data(version: str = DATA_VERSION, seed: int = 0):
-    bench_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    data_dir = os.path.join(bench_root, "..", "time", "benchmarks")
-    q_path, f_path, e_path = data_utils.get_data_paths(version, seed, data_dir)
+@kbench.task(name="ChangeDetection", description="Did anything change between day X and day Y?")
+def change_detection_task(llm, version: str = "v1", seed: int = 0) -> None:
+    """ChangeDetection: Binary detection of whether facts changed in a time range."""
+    store = build_store(version=version, seed=seed)
+    questions = load_questions(version=version, seed=seed)
 
-    questions = [json.loads(l) for l in open(q_path, encoding="utf-8")]
-    facts = [json.loads(l) for l in open(f_path, encoding="utf-8")]
+    # Filter to ChangeDetection questions
+    change_questions = [q for q in questions if q.get("task_family") == "ChangeDetection"]
 
-    events = []
-    if os.path.exists(e_path):
-        events = [json.loads(l) for l in open(e_path, encoding="utf-8")]
+    for q in change_questions:
+        domain = q.get("domain", "")
+        subject = q.get("subject", "")
 
-    return questions, facts, events
+        # v2/v3 use start_day/end_day; v1 uses as_of_day for range
+        start_day = q.get("start_day", 1)
+        end_day = q.get("end_day", q.get("as_of_day", 50))
 
-
-def build_harness(version: str = DATA_VERSION, seed: int = 0):
-    questions, facts, events = load_data(version, seed)
-
-    # Build timeline index: (domain, subject) -> sorted [(day, value)]
-    timeline: dict[tuple, list[tuple]] = {}
-    for f in facts:
-        domain, subject, day, value = data_utils.parse_content_flexible(f["content"])
-        key = (domain, subject)
-        if key not in timeline:
-            timeline[key] = []
-        timeline[key].append((day, value))
-        timeline[key].sort(key=lambda x: x[0])
-
-    return {"questions": questions, "facts": facts, "events": events, "timeline": timeline}
-
-
-def detect_change(domain: str, subject: str, start_day: int, end_day: int, timeline: dict) -> bool:
-    key = (domain, subject)
-    if key not in timeline:
-        return False
-    values_in_range = [(d, v) for d, v in timeline[key] if start_day < d <= end_day]
-    if len(values_in_range) > 1:
-        return True
-    return False
-
-
-def score(question: dict, harness: dict) -> dict[str, Any]:
-    domain = question["domain"]
-    subject = question["subject"]
-
-    # v2 uses start_day/end_day; v1 uses as_of_day for range
-    start_day = question.get("start_day", 1)
-    end_day = question.get("end_day", question.get("as_of_day", 50))
-
-    changed = detect_change(domain, subject, start_day, end_day, harness["timeline"])
-
-    expected = "yes" if changed else "no"
-    response = question.get("response", "").lower().strip()
-    correct = ("yes" in response) == changed or ("no" in response) == (not changed)
-
-    return {
-        "correct": correct,
-        "expected": expected,
-        "question_id": question["question_id"],
-        "task_family": TASK_FAMILY,
-    }
-
-
-def run(llm, version: str = DATA_VERSION, seed: int = 0):
-    harness = build_harness(version, seed)
-    questions = harness["questions"]
-
-    correct = 0
-    total = 0
-    rows = []
-
-    for q in questions:
-        if q.get("task_family") != TASK_FAMILY:
+        if not domain or not subject:
             continue
 
-        prompt = q["prompt"].strip()
+        # Did anything change?
+        changed = store.detect_change(domain, subject, start_day, end_day)
+
+        # LLM evaluation
+        prompt = q.get("prompt", "").strip()
         response = llm.prompt(prompt).strip()
-        q["response"] = response
-        result = score(q, harness)
-        result["prompt"] = prompt
-        result["response"] = response
-        rows.append(result)
 
-        if result["correct"]:
-            correct += 1
-        total += 1
+        # Binary: yes/no response should match our ground truth
+        resp_lower = response.lower()
+        predicted_yes = changed
+        response_yes = "yes" in resp_lower or "changed" in resp_lower or "true" in resp_lower
+        correct = response_yes == predicted_yes
 
-    f1 = correct / total if total > 0 else 0.0
-    return {
-        "task_family": TASK_FAMILY,
-        "version": version,
-        "seed": seed,
-        "accuracy": f1,
-        "correct": correct,
-        "total": total,
-        "rows": rows,
-    }
+        kbench.assertions.assert_true(
+            correct,
+            f"[ChangeDetection] domain={domain} subject={subject} "
+            f"[{start_day}, {end_day}] | Changed={changed} | LLM: {response}",
+        )

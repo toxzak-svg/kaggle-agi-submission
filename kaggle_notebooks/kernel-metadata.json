@@ -1,11 +1,11 @@
 {
-  "id": "toxzak/temporalbench-v1-baseline",
-  "title": "TemporalBench v1 — Baseline Tier",
-  "code_file": "temporalbench_v1.ipynb",
+  "id": "zacharymaronek/temporalbench-evaluator",
+  "title": "TemporalBench Evaluator",
+  "code_file": "temporalbench_evaluator.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": true,
   "enable_gpu": false,
-  "dataset_sources": ["zacharymaronek/temporalbenchmark"],
+  "dataset_sources": ["zacharymaronek/temporalbench"],
   "competition_sources": ["kaggle-measuring-agi"]
 }

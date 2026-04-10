@@ -1,0 +1,23 @@
+{
+  "title": "TemporalBench",
+  "subtitle": "Temporal reasoning benchmark data — v1-v4, seeds 0-2",
+  "id": "zacharymaronek/temporalbench",
+  "licenses": [{"name": "CC0-1.0"}],
+  "keywords": ["temporal-reasoning", "AGI", "benchmark", "LLM-evaluation"],
+  "resources": [
+    {"path": "v1_seed0/questions.jsonl", "description": "v1 seed 0 questions"},
+    {"path": "v1_seed0/facts.jsonl", "description": "v1 seed 0 facts"},
+    {"path": "v1_seed0/events.jsonl", "description": "v1 seed 0 events"},
+    {"path": "v2_seed0/questions.jsonl", "description": "v2 seed 0 questions"},
+    {"path": "v2_seed0/facts.jsonl", "description": "v2 seed 0 facts"},
+    {"path": "v2_seed0/events.jsonl", "description": "v2 seed 0 events"},
+    {"path": "v3_seed0/questions.jsonl", "description": "v3 seed 0 questions"},
+    {"path": "v3_seed0/facts.jsonl", "description": "v3 seed 0 facts"},
+    {"path": "v3_seed0/events.jsonl", "description": "v3 seed 0 events"},
+    {"path": "v4_seed0/questions.jsonl", "description": "v4 seed 0 questions"},
+    {"path": "v4_seed0/facts.jsonl", "description": "v4 seed 0 facts"},
+    {"path": "v4_seed0/events.jsonl", "description": "v4 seed 0 events"},
+    {"path": "adversarial_temporal_questions.jsonl", "description": "Adversarial reversion questions"},
+    {"path": "adversarial_temporal_facts.jsonl", "description": "Adversarial reversion facts"}
+  ]
+}

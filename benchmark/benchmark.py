@@ -5,11 +5,11 @@ https://www.kaggle.com/competitions/kaggle-measuring-agi
 Runs all task families across v1/v2/v3/v4 and computes composite TRS.
 """
 
-from .tasks.as_of import run as run_as_of
-from .tasks.change_detection import run as run_change
-from .tasks.causal_trace import run as run_causal
-from .tasks.staleness import run as run_staleness
-from .tasks.reversion import run as run_reversion
+from .tasks.as_of_legacy import run as run_as_of
+from .tasks.change_detection_legacy import run as run_change
+from .tasks.causal_trace_legacy import run as run_causal
+from .tasks.staleness_legacy import run as run_staleness
+from .tasks.reversion_legacy import run as run_reversion
 from .tasks.task_routing import get_version_tasks
 
 import json
@@ -136,5 +136,7 @@ class TemporalBench:
 if __name__ == "__main__":
     print("TemporalBench v1.0")
     print("Run with: python run_benchmark.py --all")
+
+# TODO (rotator): 3. Upload to Kaggle: `kaggle.com/benchmarks/temporalbench-v1`
 
 # TODO (rotator): 3. Upload to Kaggle: `kaggle.com/benchmarks/temporalbench-v1`

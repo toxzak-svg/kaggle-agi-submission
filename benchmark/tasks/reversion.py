@@ -1,75 +1,99 @@
 """
-TemporalBench — Kaggle Benchmark Tasks
+TemporalBench — ReversionDetection (Adversarial) Task
 https://www.kaggle.com/competitions/kaggle-measuring-agi
 
-Task: Reversion Detection (adversarial)
-" As of day X, who was CEO of reversion_Y?"
-Adversarial facts that flip back — tests whether systems can handle reversions.
+Task: As of day X, who was subject Y?
+Adversarial facts that flip back — tests whether systems handle reversions.
+Data: adversarial_temporal_questions.jsonl (top-level, not versioned).
 """
 
 import json
 import os
-from typing import Any
-from . import data_utils
 
-TASK_FAMILY = "Reversion"
-DATA_VERSION = "v1"
+import kbench
+import kbench.assertions
 
-
-def load_data(version: str = DATA_VERSION, seed: int = 0):
-    bench_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    data_dir = os.path.join(bench_root, "..", "time", "benchmarks")
-    adv_q_path = os.path.join(data_dir, "adversarial_temporal_questions.jsonl")
-    questions = [json.loads(l) for l in open(adv_q_path, encoding="utf-8")]
-    return questions
+from .store import get_data_dir
 
 
-def build_harness(version: str = DATA_VERSION, seed: int = 0):
-    questions = load_data(version, seed)
-    return {"questions": questions}
+def _load_adversarial_questions():
+    """Load the adversarial question set (one flat file, all seeds pooled)."""
+    data_dir = get_data_dir()
+    adv_path = os.path.join(data_dir, "adversarial_temporal_questions.jsonl")
+    if not os.path.exists(adv_path):
+        return []
+    return [json.loads(l) for l in open(adv_path, encoding="utf-8")]
 
 
-def score(question: dict, harness: dict = None) -> dict[str, Any]:
-    expected = question.get("answer", "").strip()
-    response = question.get("response", "").strip()
-    correct = expected in response or response in expected
-    return {
-        "correct": correct,
-        "expected": expected,
-        "response": response,
-        "question_id": question["question_id"],
-        "task_family": TASK_FAMILY,
-    }
+def _load_adversarial_facts():
+    """Load the adversarial facts set."""
+    data_dir = get_data_dir()
+    adv_path = os.path.join(data_dir, "adversarial_temporal_facts.jsonl")
+    if not os.path.exists(adv_path):
+        return {}
+    facts = {}
+    for line in open(adv_path, encoding="utf-8"):
+        f = json.loads(line)
+        # Facts keyed by domain:subject for quick lookup
+        domain = f.get("domain", "")
+        content = f.get("content", "")
+        parts = content.split(":")
+        subject = parts[1] if len(parts) > 1 else ""
+        key = f"{domain}:{subject}"
+        facts[key] = content
+    return facts
 
 
-def run(llm, version: str = DATA_VERSION, seed: int = 0):
-    harness = build_harness(version, seed)
-    questions = harness["questions"]
-
-    correct = 0
-    total = 0
-    rows = []
+@kbench.task(
+    name="ReversionDetection",
+    description="As of day X, who was subject Y? (Adversarial reversion — facts flip back)",
+)
+def reversion_detection_task(llm) -> None:
+    """ReversionDetection: Handles adversarial flipping facts that revert to prior values."""
+    questions = _load_adversarial_questions()
 
     for q in questions:
-        prompt = q["prompt"].strip()
+        domain = q.get("domain", "")
+        subject = q.get("subject", "")
+        as_of_day = q.get("as_of_day", 50)
+
+        if not domain or not subject:
+            continue
+
+        # Parse content to extract day from "domain:subject:d{day}:..."
+        content = q.get("content", "")
+        parts = content.split(":")
+        # Expected answer is the full content string (what was true at as_of_day)
+        expected = q.get("answer", "").strip()
+
+        # LLM evaluation
+        prompt = q.get("prompt", "").strip()
         response = llm.prompt(prompt).strip()
-        q["response"] = response
-        result = score(q, harness)
-        result["prompt"] = prompt
-        result["response"] = response
-        rows.append(result)
 
-        if result["correct"]:
-            correct += 1
-        total += 1
+        # Partial match on the subject + value (ignoring the encoded day)
+        resp_lower = response.lower()
+        # Match if LLM returns the right subject and a reasonable value
+        match = (
+            expected.lower() in resp_lower
+            or _content_match(expected, content, response)
+        )
 
-    accuracy = correct / total if total > 0 else 0.0
-    return {
-        "task_family": TASK_FAMILY,
-        "version": version,
-        "seed": seed,
-        "accuracy": accuracy,
-        "correct": correct,
-        "total": total,
-        "rows": rows,
-    }
+        kbench.assertions.assert_true(
+            match,
+            f"[Reversion] domain={domain} subject={subject} "
+            f"as_of_day={as_of_day} | Expected={expected} | LLM: {response}",
+        )
+
+
+def _content_match(expected: str, content: str, response: str) -> bool:
+    """Match expected answer in LLM response (handles rephrasing)."""
+    resp_lower = response.lower()
+    exp_lower = expected.lower()
+    # Extract subject and value (ignoring encoded day)
+    exp_parts = exp_lower.split(":")
+    if len(exp_parts) >= 4:
+        # domain:subject:dX:value → match subject and value
+        subj = exp_parts[1]
+        val = exp_parts[-1]
+        return subj in resp_lower and val in resp_lower
+    return exp_lower in resp_lower or exp_lower in resp_lower
