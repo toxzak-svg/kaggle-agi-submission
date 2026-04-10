@@ -9,7 +9,13 @@ from typing import Optional
 
 
 def get_data_dir():
-    """Find the temporalbench data directory (Kaggle input or local)."""
+    """Find the temporalbench data directory.
+    
+    Kaggle: /kaggle/input/temporalbench  (dataset 'zacharymaronek/temporalbench')
+    Override with TEMPORALBENCH_DATA env var.
+    """
+    if os.environ.get("TEMPORALBENCH_DATA"):
+        return os.environ["TEMPORALBENCH_DATA"]
     kaggle_input = "/kaggle/input/temporalbench"
     if os.path.isdir(kaggle_input):
         return kaggle_input

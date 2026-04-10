@@ -179,7 +179,7 @@ From your data: v4 has no change events but tests reversion patterns. System C/D
 
 - [x] 1. Create `benchmark.json` listing all tasks  → `benchmark/tasks.json` (already existed)
 - [x] 2. Zip `benchmark/` directory  → `benchmark.zip` created (35.8 KB)
-- [ ] 3. Upload to Kaggle: `kaggle.com/benchmarks/temporalbench-v1`
+- [ ] 3. Upload to Kaggle: `kaggle.com/benchmarks/temporalbench-v1` — rotator attempted (blocked: requires Kaggle auth/credentials from Zach)
 - [ ] 4. Set all tasks **private** (auto-publish after April 16)
 
 ### 4.2 Writeup Finalization
