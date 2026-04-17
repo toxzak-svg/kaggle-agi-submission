@@ -1,2 +1,0 @@
-# TemporalBench dependencies
-openai>=1.0.0

@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data directories (kaggle data is downloaded separately)
+kaggle_data/v*_seed*/
+kaggle_data/temporalbench-data.zip
