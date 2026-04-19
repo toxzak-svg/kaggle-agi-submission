@@ -6,6 +6,7 @@ Task: As of day X, who was subject Y?
 Adversarial facts that flip back — tests whether systems handle reversions.
 Data: adversarial_temporal_questions.jsonl (top-level, not versioned).
 """
+!pip install kaggle-benchmarks -q
 
 import json
 import os

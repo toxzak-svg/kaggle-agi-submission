@@ -5,6 +5,7 @@ https://www.kaggle.com/competitions/kaggle-measuring-agi
 Task: As of day X, what was true about subject Y?
 Filters for AsOfQA (v1) and PastQueryTrap (v2/v3/v4) question types.
 """
+!pip install kaggle-benchmarks -q
 
 import kbench
 import kbench.assertions

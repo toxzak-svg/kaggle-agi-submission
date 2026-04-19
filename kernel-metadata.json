@@ -1,12 +1,12 @@
 {
-  "id": "zacharymaronek/temporalbench-evaluator-v2",
-  "title": "TemporalBench Evaluator v2",
-  "code_file": "temporalbench_evaluator.ipynb",
+  "id": "zacharymaronek/temporalbench-evaluator",
+  "title": "TemporalBench Evaluator",
+  "code_file": "kaggle_notebooks/temporalbench_evaluator.ipynb",
   "language": "python",
+  "kernel_type": "notebook",
   "dataset_sources": ["zacharymaronek/temporalbench"],
-  "kernel_sources": [],
+  "competition_sources": ["kaggle-measuring-agi"],
   "is_private": true,
   "enable_gpu": false,
-  "enable_internet": true,
-  "competition_sources": []
+  "enable_internet": true
 }

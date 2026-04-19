@@ -5,6 +5,7 @@ https://www.kaggle.com/competitions/kaggle-measuring-agi
 Task: Is this fact stale or current? Has it been superseded?
 Derived from AsOfQA — if the latest fact for domain:subject is after as_of_day, it's stale.
 """
+!pip install kaggle-benchmarks -q
 
 import kbench
 import kbench.assertions

@@ -5,6 +5,7 @@ https://www.kaggle.com/competitions/kaggle-measuring-agi
 Task: Did anything change for domain:subject between day X and day Y?
 Filters for ChangeDetection task_family.
 """
+!pip install kaggle-benchmarks -q
 
 import kbench
 import kbench.assertions

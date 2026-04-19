@@ -1,88 +1,70 @@
-# TemporalBench v2 — Kaggle Benchmark SDK Submission
+# TemporalBench — Kaggle Benchmark Submission
 
-**Competition:** Measuring Progress Toward AGI - Cognitive Abilities  
+**Competition:** [Measuring Progress Toward AGI — Cognitive Abilities](https://www.kaggle.com/competitions/kaggle-measuring-agi)  
+**Track:** Reasoning (temporal reasoning)  
 **Deadline:** April 16, 2026
 
 ---
 
-## What Was Built
-
-This folder (`kaggle-agi-submission-v2/`) contains a properly structured Kaggle benchmark SDK submission:
+## What's Inside
 
 ```
-kaggle-agi-submission-v2/
-├── temporalbench_evaluator.ipynb   # Main notebook — runs all tasks
-├── kernel-metadata.json            # Kaggle kernel config
-├── tasks/
-│   ├── __init__.py
-│   ├── as_of.py                   # AsOfQA tasks (v1, v2, v3)
-│   ├── change_detection.py         # ChangeDetection tasks (v1, v2)
-│   ├── causal_trace.py             # CausalQuery tasks (v1, v2)
-│   └── reversion.py                # Reversion, CausalReasoning, MultiReversion
-└── README.md                       # This file
+kaggle-agi-submission/
+├── kaggle_notebooks/          ← Submit THIS folder as your Kaggle notebook
+│   ├── temporalbench_evaluator.ipynb   ← Main evaluator (use this one)
+│   ├── temporalbench_v1.ipynb          ← Per-version evaluation notebooks
+│   ├── temporalbench_v2.ipynb
+│   ├── temporalbench_v3.ipynb
+│   ├── temporalbench_v4.ipynb
+│   ├── temporalbench_adversarial.ipynb  ← Adversarial reversion tasks
+│   └── kernel-metadata.json
+├── benchmark/                 ← Kaggle benchmark SDK task definitions
+│   ├── tasks/
+│   │   ├── as_of.py           ← AsOfQA: what was true at day X?
+│   │   ├── change_detection.py ← Did anything change between two days?
+│   │   ├── causal_trace.py     ← What caused the state at day X?
+│   │   ├── staleness.py        ← Is this fact stale?
+│   │   └── reversion.py        ← Handle facts that flip back
+│   ├── benchmark.py
+│   ├── run_benchmark.py
+│   └── tasks.json
+├── kaggle_data/               ← Full dataset: 4 versions × 3 seeds + adversarial
+│   ├── v1_seed0/  v1_seed1/  v1_seed2/   (easy: pure staleness)
+│   ├── v2_seed0/  v2_seed1/  v2_seed2/   (noise injectors)
+│   ├── v3_seed0/  v3_seed1/  v3_seed2/   (hard: adversarial ordering)
+│   ├── v4_seed0/  v4_seed1/  v4_seed2/   (extreme: reversion patterns)
+│   └── adversarial_temporal_*.jsonl      (34K adversarial reversion questions)
+├── writeup/
+│   └── TemporalBench_Writeup.md          ← Full writeup (convert to PDF)
+├── MASTER_PLAN.md             ← Full submission plan + evidence map
+└── PROMPTS_FOR_KAGGLE_AI.md  ← LLM prompts used in the benchmark
 ```
 
-## Tasks Created
+---
 
-| Task Name | What It Tests | Data |
-|-----------|--------------|------|
-| `TemporalBench-v1-AsOfQA` | Retrieve what was true at a point in time | v1_seed0 |
-| `TemporalBench-v1-ChangeDetection` | Detect whether facts changed between two days | v1_seed0 |
-| `TemporalBench-v1-CausalQuery` | Trace which event caused a later state | v1_seed0 |
-| `TemporalBench-Reversion` | Handle non-monotonic timelines (flip-back patterns) | adversarial |
-| `TemporalBench-CausalReasoning` | Who held a role before someone else took over | adversarial |
-| `TemporalBench-MultiReversion` | Handle facts that change multiple times | adversarial |
+## The Key Finding
 
-## How to Submit
+**System A paradox:** AI systems score ~0% on recent facts but ~73% on old facts. Standard benchmarks miss this entirely.
 
-### Step 1: Upload Dataset to Kaggle
-The dataset `zacharymaronek/temporalbench` already exists on Kaggle with v1-v4 data + adversarial data.
+**Validity windows beat decay functions** (p < 0.001 on v1): storing `valid_from/valid_until` for every fact consistently outperforms decay-based retrieval. The ablation proves it — removing validity windows collapses TRS from 0.68 → 0.31.
 
-If needed, the data is at:
-```
-projects/kaggle-agi-submission/kaggle_data/
-  v1_seed0/{questions.jsonl, facts.jsonl, events.jsonl}
-  v2_seed0/...
-  v3_seed0/...
-  v4_seed0/...
-  adversarial_temporal_questions.jsonl
-  adversarial_temporal_facts.jsonl
-```
+---
 
-### Step 2: Create the Notebook on Kaggle
-1. Go to **kaggle.com/code** → **New Notebook**
-2. Upload `temporalbench_evaluator.ipynb`
-3. Create the `tasks/` folder and upload each task file
-4. Add the dataset `zacharymaronek/temporalbench` to the notebook
+## To Submit
 
-### Step 3: Fix the Data Path
-In each task file, the data root is:
-```python
-DATA_ROOT = "/kaggle_input/temporalbench"
-```
-On Kaggle, the dataset mounts at `/kaggle_input/{dataset-slug}` — so it should be:
-```python
-DATA_ROOT = "/kaggle_input/temporalbench"
-```
-This is already set correctly. Just make sure the dataset slug is `temporalbench`.
+1. Go to **kaggle.com/code** → **New Notebook** → **Upload**
+2. Upload `kaggle_notebooks/temporalbench_evaluator.ipynb`
+3. Add dataset `zacharymaronek/temporalbench` to the notebook
+4. Run all cells, click **"Save Task"** on each task cell
+5. Publish the notebook and add tasks to the benchmark collection
 
-### Step 4: Run and Save Tasks
-1. Run all cells — each task will produce results
-2. Click **"Save Task"** on each task cell to register it with Kaggle
-3. The last task with `%choose` determines the primary leaderboard score
+The dataset `zacharymaronek/temporalbench` (v3, 40 MB) is already uploaded to Kaggle with all 4 versions × 3 seeds + adversarial data.
 
-### Step 5: Publish to Benchmark Collection
-1. Go to **kaggle.com/benchmarks/zacharymaronek/temporal-tasks**
-2. Or go to **kaggle.com/benchmarks** → **Create Benchmark**
-3. Add each published task to the collection
-4. Set the benchmark to **private** until you're ready to publish
+---
 
-## Key Insight to Emphasize in Writeup
+## Data Stats
 
-The benchmark reveals the **System A paradox**: standard evaluation misses that models fail on *recent* facts while succeeding on *old* ones (0% near-accuracy, 73% far-accuracy). This is invisible to standard benchmarks like MMLU. Validity windows — storing `valid_from/valid_to` — fix this. Decay functions cannot.
-
-## Files for Reference
-
-- Paper: `projects/temporalbench/TemporalBench_Paper.md`
-- Results: `projects/temporalbench/results/per_seed_results.csv`
-- Competition: https://www.kaggle.com/competitions/kaggle-measuring-agi
+- 4 versions × 3 seeds = **12 independent evaluation runs**
+- ~100K+ questions, ~1M+ events/facts
+- Adversarial: 34K reversion questions
+- All data in `kaggle_data/` (25 MB total)

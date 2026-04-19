@@ -5,6 +5,7 @@ https://www.kaggle.com/competitions/kaggle-measuring-agi
 Task: Which change on day X caused the state on day Y for subject Z?
 Answers are event IDs (e.g. "e114").
 """
+!pip install kaggle-benchmarks -q
 
 import kbench
 import kbench.assertions
